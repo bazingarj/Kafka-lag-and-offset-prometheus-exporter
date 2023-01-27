@@ -10,7 +10,7 @@ import time
 from prometheus_client import start_http_server, Gauge
 import asyncio
 
-KAFKA = "{{ KAFKA_SERVERS }}"
+KAFKA = "{{ KafkaServers }}"
 
 class CustomExporter:
     finalList = []
