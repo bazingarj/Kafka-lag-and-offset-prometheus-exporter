@@ -1,11 +1,11 @@
 [Unit]
-Description={{ service_description }}
+Description={{ ServiceDescription }}
 After=network.target
 
 [Service]
 Type=simple
-User={{ user }}
-ExecStart={{ command }}
+User={{ User }}
+ExecStart={{ Command }}
 Restart=on-failure
 
 [Install]
