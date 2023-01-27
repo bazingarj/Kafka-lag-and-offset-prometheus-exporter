@@ -10,7 +10,9 @@ import time
 from prometheus_client import start_http_server, Gauge
 import asyncio
 
-KAFKA = "{{ KafkaServers }}"
+KAFKA = "{{ Kafka.Servers }}"
+IgnoreConsumerGroups = "{{ Kafka.IgnoreConsumerGroups }}".split(",")
+WhitelistConsumerGroups = "{{ Kafka.WhitelistConsumerGroups }}".split(",")
 
 class CustomExporter:
     finalList = []
@@ -20,7 +22,9 @@ class CustomExporter:
 
     async def run(self, group):
         global KAFKA
-        if group == '':
+        if group == '' or group in IgnoreConsumerGroups:
+            return ''
+        if len(WhitelistConsumerGroups) > 0  and WhitelistConsumerGroups[0] != '' and group not in WhitelistConsumerGroups:
             return ''
         SCRIPT = '/home/kafka/kafka/bin/./kafka-consumer-groups.sh'
         cmd = ''+SCRIPT+' --bootstrap-server '+KAFKA+' --group '+group+' --describe'
@@ -59,7 +63,7 @@ class CustomExporter:
 
         start = 0
         end = len(listGroups)
-        step = 10
+        step = {{ Kafka.ParallelFetch }}
         for i in range(start, end, step):
             tmp = listGroups[i:i+step]
             loop = asyncio.new_event_loop()
@@ -69,8 +73,8 @@ class CustomExporter:
 
 
     def main(self):
-        polling_interval_seconds = int(os.getenv("POLLING_INTERVAL_SECONDS", "30"))
-        exporter_port = int(os.getenv("EXPORTER_PORT", "8001"))
+        polling_interval_seconds = int(os.getenv("POLLING_INTERVAL_SECONDS", "{{ Exporter.PollingInterval }}"))
+        exporter_port = int(os.getenv("EXPORTER_PORT", "{{ Exporter.Port }}"))
         start_http_server(exporter_port)
         while True:
             self.getConsumerGroupMetrics()
@@ -79,7 +83,7 @@ class CustomExporter:
                 self.lags.labels(consumer_group=m['GROUP'],topic=m['TOPIC'],partition=m['PARTITION']).set( m['LAG'].replace('-', '0') )
             self.finalList = []
             #print('Iteration Complete')
-            time.sleep(15)
+            time.sleep({{ Exporter.GapBetweenFetch }})
 
 if __name__ == "__main__":
     c = CustomExporter()
