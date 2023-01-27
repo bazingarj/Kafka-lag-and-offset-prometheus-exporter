@@ -1,0 +1,12 @@
+[Unit]
+Description={{ service_description }}
+After=network.target
+
+[Service]
+Type=simple
+User={{ user }}
+ExecStart={{ command }}
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
