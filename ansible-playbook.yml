@@ -1,0 +1,60 @@
+---
+- name: Setup KAFKA LAG and OFFSET exporter
+  hosts: all
+  remote_user: ubuntu
+  vars:
+    ServiceDescription: "This service is used for KAFKA custom lag exporter"
+    User: "ubuntu"
+    Kafka:
+      Servers: ""
+      ParallelFetch: 10
+      IgnoreConsumerGroups: ""
+      WhitelistConsumerGroups: ""
+    RepositoryName: "Kafka-lag-and-offset-prometheus-exporter"
+    RepositoryOwner: "bazingarj"
+    ExporterFile: "/opt/custom-kafka-exporter.py"
+    Command: "/usr/bin/python3 {{ ExporterFile }}"
+    Exporter:
+      Port: 8001
+      PollingInterval: 30
+      GapBetweenFetch: 15
+  tasks:
+
+  - name: Git checkout code Repo
+    connection : local
+    ansible.builtin.git:
+      repo: "https://github.com/{{ RepositoryOwner }}/{{ RepositoryName }}.git"
+      dest: "./{{ RepositoryName }}"
+
+  - name: Copy script to /opt/custom-kafka-exporter.py
+    become: true
+    template:
+      src: "./{{ RepositoryName }}/custom-kafka-exporter.py"
+      dest: "{{ ExporterFile }}"
+
+  - name: install service systemd unit file
+    become: true
+    template:
+      src: "./{{ RepositoryName }}/custom-kafka-exporter.service.template"
+      dest: /etc/systemd/system/custom-kafka-exporter.service
+
+  - name: start exporter service
+    become: true
+    systemd: state=started name=custom-kafka-exporter daemon_reload=yes enabled=true
+
+  - name: Export healthcheck
+    uri:
+      url: "http://localhost:{{ Exporter.Port }}"
+      status_code: 200
+    loop:
+      - healthcheck1
+      - healthcheck2
+      - healthcheck3
+    loop_control:
+      pause: 2
+
+  - name: Delete content & directory
+    connection : local
+    file:
+      state: absent
+      path: "./{{ RepositoryName }}"
